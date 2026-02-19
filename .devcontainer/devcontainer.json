@@ -1,0 +1,31 @@
+{
+  "name": "MEDLedger Codespace",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "postCreateCommand": "cd frontend && npm install && cd ../server && npm install && cd ../ai-service && python -m pip install -r requirements.txt",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  },
+  "forwardPorts": [8081, 5000, 8000],
+  "portsAttributes": {
+    "8081": {
+      "label": "Frontend",
+      "onAutoForward": "notify"
+    },
+    "5000": {
+      "label": "Backend",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "AI Service",
+      "onAutoForward": "notify"
+    }
+  }
+}

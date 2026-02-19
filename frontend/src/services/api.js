@@ -25,10 +25,16 @@ export async function loginUser(payload) {
 }
 
 export async function uploadRecord({ file, recordType, notes }) {
+  const user = localStorage.getItem("medledger_user");
+  const patientAddress = user ? JSON.parse(user).userId : "0x0000000000000000000000000000000000000000";
+  const walletAddress = localStorage.getItem("medledger_wallet") || patientAddress;
+  
   const formData = new FormData();
   formData.append("file", file);
   formData.append("recordType", recordType);
   formData.append("notes", notes);
+  formData.append("patientAddress", walletAddress);
+  
   const { data } = await api.post("/records/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" }
   });
@@ -118,13 +124,47 @@ export async function setConsent(consentId, enabled) {
 
 export async function predictHealthRisk(payload) {
   try {
-    const { data } = await api.post("/ai/predict-risk", payload);
+    const formData = new FormData();
+    formData.append("age", payload.age);
+    formData.append("bmi", payload.bmi);
+    formData.append("systolic_bp", payload.systolic_bp);
+    formData.append("glucose", payload.glucose);
+    formData.append("smoker", payload.smoker);
+    formData.append("family_history", payload.family_history);
+
+    if (payload.patientAddress) {
+      formData.append("patientAddress", payload.patientAddress);
+    }
+    if (payload.doctorAddress) {
+      formData.append("doctorAddress", payload.doctorAddress);
+    }
+    if (payload.analysisFile) {
+      formData.append("analysisFile", payload.analysisFile);
+    }
+
+    const { data } = await api.post("/ai/predict-risk", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
     return data;
   } catch {
     return {
       risk_probability: 0.58,
       risk_level: "Moderate",
-      model: "LogisticRegression"
+      model: "LogisticRegression",
+      disease_prediction: "Cardiovascular Disease (CVD)",
+      disease_confidence: 0.58,
+      disease_candidates: [
+        {
+          disease: "Cardiovascular Disease (CVD)",
+          score: 3,
+          evidence: ["Demo fallback response"]
+        }
+      ],
+      analysis_source: {
+        records_considered: 0,
+        uploaded_file_used: false,
+        uploaded_file_name: null
+      }
     };
   }
 }

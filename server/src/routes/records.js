@@ -11,10 +11,14 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
-    const { patientAddress, doctorAddress } = req.body;
+    let { patientAddress, doctorAddress, recordType, notes } = req.body;
     const file = req.file;
 
-    if (!patientAddress || !ethers.isAddress(patientAddress)) {
+    if (!patientAddress) {
+      patientAddress = "0x0000000000000000000000000000000000000000";
+    }
+
+    if (!ethers.isAddress(patientAddress)) {
       return res.status(400).json({ message: "Valid patientAddress is required" });
     }
 

@@ -10,7 +10,7 @@ const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "";
 
 function getEthereum() {
   if (!window.ethereum) {
-    throw new Error("MetaMask not found. Please install MetaMask.");
+    return null;
   }
   return window.ethereum;
 }
@@ -28,6 +28,9 @@ async function getContractWithSigner() {
 
 export async function connectWallet() {
   const ethereum = getEthereum();
+  if (!ethereum) {
+    throw new Error("MetaMask not installed. Install it from https://metamask.io");
+  }
   const provider = new ethers.BrowserProvider(ethereum);
   const accounts = await provider.send("eth_requestAccounts", []);
   const address = accounts?.[0];
@@ -70,6 +73,9 @@ export async function hasDoctorAccess(patientAddress, doctorAddress) {
     return false;
   }
   const ethereum = getEthereum();
+  if (!ethereum) {
+    return false;
+  }
   const provider = new ethers.BrowserProvider(ethereum);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
   const status = await contract.hasAccess(patientAddress, doctorAddress);

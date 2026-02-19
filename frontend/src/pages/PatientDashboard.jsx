@@ -12,6 +12,7 @@ export default function PatientDashboard() {
     smoker: 0,
     family_history: 0
   });
+  const [analysisFile, setAnalysisFile] = useState(null);
   const [predicting, setPredicting] = useState(false);
   const [riskResult, setRiskResult] = useState(null);
   const [riskError, setRiskError] = useState("");
@@ -40,12 +41,24 @@ export default function PatientDashboard() {
     setRiskForm(prev => ({ ...prev, [name]: Number(value) }));
   };
 
+  const handleAnalysisFileChange = event => {
+    const file = event.target.files?.[0] || null;
+    setAnalysisFile(file);
+  };
+
   const handlePredictRisk = async event => {
     event.preventDefault();
     setPredicting(true);
     setRiskError("");
     try {
-      const result = await predictHealthRisk(riskForm);
+      const user = localStorage.getItem("medledger_user");
+      const patientAddress = localStorage.getItem("medledger_wallet") || (user ? JSON.parse(user).userId : "");
+
+      const result = await predictHealthRisk({
+        ...riskForm,
+        patientAddress,
+        analysisFile
+      });
       setRiskResult(result);
     } catch {
       setRiskError("Unable to fetch AI prediction right now.");
@@ -127,18 +140,25 @@ export default function PatientDashboard() {
             <input className="input" min="40" name="glucose" onChange={updateRiskField} type="number" value={riskForm.glucose} />
           </div>
           <div>
-            <label className="text-sm block mb-1">Smoker (0/1)</label>
+            <label className="text-sm block mb-1">Smoking Status</label>
             <select className="input" name="smoker" onChange={updateRiskField} value={riskForm.smoker}>
-              <option value={0}>0</option>
-              <option value={1}>1</option>
+              <option value={0}>Non-smoker</option>
+              <option value={1}>Smoker</option>
             </select>
           </div>
           <div>
-            <label className="text-sm block mb-1">Family History (0/1)</label>
+            <label className="text-sm block mb-1">Family History of Chronic Illness</label>
             <select className="input" name="family_history" onChange={updateRiskField} value={riskForm.family_history}>
-              <option value={0}>0</option>
-              <option value={1}>1</option>
+              <option value={0}>No known history</option>
+              <option value={1}>Present</option>
             </select>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <label className="text-sm block mb-1">Upload Report / Scan for AI Analysis (Optional)</label>
+            <input className="input" onChange={handleAnalysisFileChange} type="file" />
+            <p className="text-xs text-gray-500 mt-1">
+              Upload lab report, prescription, discharge summary, or scan file so AI can analyze record context.
+            </p>
           </div>
 
           <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-3">
@@ -156,6 +176,7 @@ export default function PatientDashboard() {
               <span className="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
                 Probability: {(Number(riskResult.risk_probability) * 100).toFixed(1)}%
               </span>
+              <span className="px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-700">Disease Focus: {riskResult.disease_prediction}</span>
               <span
                 className={`px-3 py-1 rounded-full text-xs ${
                   riskResult.risk_level === "High"
@@ -168,6 +189,23 @@ export default function PatientDashboard() {
                 Risk Level: {riskResult.risk_level}
               </span>
             </div>
+            {riskResult.analysis_source && (
+              <p className="text-xs text-gray-600 mt-2">
+                Records analyzed: {riskResult.analysis_source.records_considered} • Uploaded file used: {riskResult.analysis_source.uploaded_file_used ? "Yes" : "No"}
+              </p>
+            )}
+            {Array.isArray(riskResult.disease_candidates) && riskResult.disease_candidates.length > 0 && (
+              <div className="mt-3">
+                <p className="text-sm font-medium mb-1">Top Disease Candidates</p>
+                <ul className="text-xs text-gray-700 space-y-1">
+                  {riskResult.disease_candidates.map(candidate => (
+                    <li key={candidate.disease}>
+                      {candidate.disease} (score: {candidate.score})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

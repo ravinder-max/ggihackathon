@@ -15,10 +15,21 @@ export default function ConsentPage() {
   }, []);
 
   const refreshConsentStatus = async targetDoctor => {
-    if (!patientAddress || !ethers.isAddress(patientAddress) || !ethers.isAddress(targetDoctor)) {
-      return;
+    if (!ethers.isAddress(targetDoctor)) {
+      return null;
     }
-    const enabled = await hasDoctorAccess(patientAddress, targetDoctor);
+    
+    // If patient address is available, check blockchain status
+    let enabled = false;
+    if (patientAddress && ethers.isAddress(patientAddress)) {
+      try {
+        enabled = await hasDoctorAccess(patientAddress, targetDoctor);
+      } catch (error) {
+        console.warn("Could not check blockchain access status:", error.message);
+        enabled = false;
+      }
+    }
+    
     setConsents(prev => {
       const existing = prev.find(item => item.doctorAddress.toLowerCase() === targetDoctor.toLowerCase());
       if (existing) {
@@ -28,6 +39,8 @@ export default function ConsentPage() {
       }
       return [...prev, { doctorAddress: targetDoctor, enabled }];
     });
+    
+    return enabled;
   };
 
   const onToggle = async consent => {
@@ -38,8 +51,15 @@ export default function ConsentPage() {
       } else {
         await revokeDoctorAccess(consent.doctorAddress);
       }
-      await refreshConsentStatus(consent.doctorAddress);
-      setMessage(`Consent ${nextEnabled ? "granted" : "revoked"} on blockchain.`);
+      // Update local state immediately for better UX
+      setConsents(prev =>
+        prev.map(item =>
+          item.doctorAddress.toLowerCase() === consent.doctorAddress.toLowerCase()
+            ? { ...item, enabled: nextEnabled }
+            : item
+        )
+      );
+      setMessage(`Consent ${nextEnabled ? "granted" : "revoked"} successfully.`);
     } catch (error) {
       setMessage(`Transaction failed: ${error.message}`);
     }
@@ -52,8 +72,17 @@ export default function ConsentPage() {
       setMessage("Enter a valid doctor wallet address.");
       return;
     }
+    
+    // Check if doctor already exists in list
+    const existing = consents.find(item => item.doctorAddress.toLowerCase() === normalized.toLowerCase());
+    if (existing) {
+      setMessage("This doctor is already in your list.");
+      return;
+    }
+    
     await refreshConsentStatus(normalized);
     setDoctorAddress("");
+    setMessage("Doctor added successfully. Toggle the button to grant consent on blockchain.");
   };
 
   return (

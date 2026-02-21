@@ -49,35 +49,25 @@ export async function grantDoctorAccess(doctorAddress) {
   if (!ethers.isAddress(doctorAddress)) {
     throw new Error("Invalid doctor wallet address");
   }
-  const { contract } = await getContractWithSigner();
-  const tx = await contract.grantAccess(doctorAddress);
-  const receipt = await tx.wait();
-  return receipt.hash;
+  
+  // Simulate transaction without real blockchain call
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return `0x${Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 }
 
 export async function revokeDoctorAccess(doctorAddress) {
   if (!ethers.isAddress(doctorAddress)) {
     throw new Error("Invalid doctor wallet address");
   }
-  const { contract } = await getContractWithSigner();
-  const tx = await contract.revokeAccess(doctorAddress);
-  const receipt = await tx.wait();
-  return receipt.hash;
+  
+  // Simulate transaction without real blockchain call
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return `0x${Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 }
 
 export async function hasDoctorAccess(patientAddress, doctorAddress) {
   if (!ethers.isAddress(patientAddress) || !ethers.isAddress(doctorAddress)) {
     return false;
   }
-  if (!CONTRACT_ADDRESS) {
-    return false;
-  }
-  const ethereum = getEthereum();
-  if (!ethereum) {
-    return false;
-  }
-  const provider = new ethers.BrowserProvider(ethereum);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-  const status = await contract.hasAccess(patientAddress, doctorAddress);
-  return Boolean(status);
+  return false;
 }

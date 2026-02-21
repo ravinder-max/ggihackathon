@@ -2,7 +2,11 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./layout/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+import ConnectWalletPage from "./pages/ConnectWalletPage";
 import PatientDashboard from "./pages/PatientDashboard";
+import RecordsPage from "./pages/RecordsPage";
+import AIAssistantPage from "./pages/AIAssistantPage";
 import UploadRecordPage from "./pages/UploadRecordPage";
 import ConsentPage from "./pages/ConsentPage";
 import DoctorDashboard from "./pages/DoctorDashboard";
@@ -15,9 +19,25 @@ export default function App() {
     <Routes>
       <Route
         element={
-          isAuthenticated ? <Navigate replace to={user?.role === "doctor" ? "/doctor" : "/"} /> : <LoginPage />
+          isAuthenticated ? <Navigate replace to="/connect-wallet" /> : <LoginPage />
         }
         path="/login"
+      />
+
+      <Route
+        element={
+          isAuthenticated ? <Navigate replace to="/connect-wallet" /> : <SignupPage />
+        }
+        path="/signup"
+      />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <ConnectWalletPage />
+          </ProtectedRoute>
+        }
+        path="/connect-wallet"
       />
 
       <Route
@@ -29,6 +49,28 @@ export default function App() {
           </ProtectedRoute>
         }
         path="/"
+      />
+
+      <Route
+        element={
+          <ProtectedRoute role="patient">
+            <AppLayout>
+              <RecordsPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+        path="/records"
+      />
+
+      <Route
+        element={
+          <ProtectedRoute role="patient">
+            <AppLayout>
+              <AIAssistantPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+        path="/ai-assistant"
       />
 
       <Route

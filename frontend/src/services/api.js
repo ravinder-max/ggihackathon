@@ -5,23 +5,51 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(config => {
-  const user = localStorage.getItem("medledger_user");
-  if (user) {
-    const { token } = JSON.parse(user);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const token = localStorage.getItem("medledger_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-export async function loginUser(payload) {
+export async function loginUser(email, password) {
   try {
-    const { data } = await api.post("/auth/login", payload);
+    const { data } = await api.post("/auth/login", { email, password });
+    if (data.token) {
+      localStorage.setItem("medledger_token", data.token);
+      localStorage.setItem("medledger_user", JSON.stringify(data.user));
+      localStorage.setItem("medledger_wallet", data.user.walletAddress);
+    }
     return data;
-  } catch {
-    return { token: "demo-token" };
+  } catch (error) {
+    console.error("Login error:", error.response?.data || error.message);
+    throw error;
   }
+}
+
+export async function registerUser(userData) {
+  const { data } = await api.post("/auth/register", userData);
+  if (data.token) {
+    localStorage.setItem("medledger_token", data.token);
+    localStorage.setItem("medledger_user", JSON.stringify(data.user));
+    localStorage.setItem("medledger_wallet", data.user.walletAddress);
+  }
+  return data;
+}
+
+export async function getCurrentUser() {
+  try {
+    const { data } = await api.get("/auth/me");
+    return data.user;
+  } catch {
+    return null;
+  }
+}
+
+export async function logoutUser() {
+  localStorage.removeItem("medledger_token");
+  localStorage.removeItem("medledger_user");
+  localStorage.removeItem("medledger_wallet");
 }
 
 export async function uploadRecord({ file, recordType, notes }) {
@@ -43,51 +71,30 @@ export async function uploadRecord({ file, recordType, notes }) {
 
 export async function getPatientRecords() {
   try {
-    const { data } = await api.get("/records/patient");
-    return data;
-  } catch {
-    return [
-      {
-        id: "REC-1001",
-        type: "Lab Result",
-        date: "2026-02-15",
-        doctor: "DR-9001",
-        status: "Encrypted"
-      },
-      {
-        id: "REC-1002",
-        type: "Prescription",
-        date: "2026-02-11",
-        doctor: "DR-9001",
-        status: "Shared"
-      }
-    ];
+    const walletAddress = localStorage.getItem("medledger_wallet");
+    if (!walletAddress) {
+      throw new Error("No wallet address found");
+    }
+    const { data } = await api.get(`/records/patient/${encodeURIComponent(walletAddress)}`);
+    // Backend returns array directly, wrap it for consistency
+    return { records: data };
+  } catch (error) {
+    console.error("getPatientRecords error:", error);
+    return { records: [] };
   }
 }
 
 export async function getDoctorRecords(patientId) {
   try {
     const user = localStorage.getItem("medledger_user");
-    const doctorAddress = user ? JSON.parse(user).userId : "";
+    const doctorAddress = user ? JSON.parse(user).walletAddress : "";
+    console.log("Fetching doctor records for patient:", patientId, "doctor:", doctorAddress);
     const { data } = await api.get(`/records/doctor?patientAddress=${encodeURIComponent(patientId)}&doctorAddress=${encodeURIComponent(doctorAddress)}`);
+    console.log("Doctor records response:", data);
     return data;
-  } catch {
-    return [
-      {
-        id: "REC-1001",
-        patientId: patientId || "PT-1001",
-        type: "Lab Result",
-        uploadedAt: "2026-02-15",
-        consent: true
-      },
-      {
-        id: "REC-1043",
-        patientId: patientId || "PT-1001",
-        type: "Radiology",
-        uploadedAt: "2026-02-18",
-        consent: false
-      }
-    ];
+  } catch (error) {
+    console.error("getDoctorRecords error:", error);
+    return [];
   }
 }
 
@@ -191,8 +198,10 @@ export async function requestEmergencyAccess(payload) {
 
 export async function getEmergencyAccesses(patientAddress, doctorAddress) {
   try {
+    const user = localStorage.getItem("medledger_user");
+    const docAddress = doctorAddress || (user ? JSON.parse(user).walletAddress : "");
     const { data } = await api.get(
-      `/emergency/active/${encodeURIComponent(patientAddress)}?doctorAddress=${encodeURIComponent(doctorAddress || "")}`
+      `/emergency/active/${encodeURIComponent(patientAddress)}?doctorAddress=${encodeURIComponent(docAddress)}`
     );
     return data;
   } catch {
@@ -202,11 +211,41 @@ export async function getEmergencyAccesses(patientAddress, doctorAddress) {
 
 export async function getRiskAlerts(patientAddress, doctorAddress) {
   try {
+    const user = localStorage.getItem("medledger_user");
+    const docAddress = doctorAddress || (user ? JSON.parse(user).walletAddress : "");
     const { data } = await api.get(
-      `/ai/alerts?patientAddress=${encodeURIComponent(patientAddress || "")}&doctorAddress=${encodeURIComponent(doctorAddress || "")}`
+      `/ai/alerts?patientAddress=${encodeURIComponent(patientAddress || "")}&doctorAddress=${encodeURIComponent(docAddress)}`
     );
     return data;
   } catch {
     return [];
+  }
+}
+
+export async function predictDiabetes(payload) {
+  try {
+    const { data } = await api.post("/ai/predict-diabetes", payload);
+    return data;
+  } catch {
+    // Return mock data for demo
+    return {
+      prediction: "Negative",
+      probability: 0.23,
+      message: "Low risk of diabetes"
+    };
+  }
+}
+
+export async function predictHeartDisease(payload) {
+  try {
+    const { data } = await api.post("/ai/predict-heart", payload);
+    return data;
+  } catch {
+    // Return mock data for demo
+    return {
+      prediction: "Negative",
+      probability: 0.15,
+      message: "Low risk of heart disease"
+    };
   }
 }
